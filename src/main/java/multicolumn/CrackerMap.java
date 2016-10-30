@@ -4,7 +4,6 @@ import static java.util.Collections.swap;
 
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +15,8 @@ import java.util.function.BiFunction;
  */
 public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable<Tuple<Head, Tail>> {
     private List<Tuple<Head, Tail>> map;
-    private TreeMap<Head, Piece> index;
+    @SuppressWarnings("rawtypes")
+	private TreeMap<Head, Piece> index;
 
     // private int tapePosition = 0;
 
@@ -29,43 +29,6 @@ public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable
 
         while (headIterator.hasNext() && tailIterator.hasNext()) {
             map.add(new Tuple<>(headIterator.next(), tailIterator.next()));
-        }
-    }
-
-    public static void main(String[] args) {
-        List<Integer> h = new ArrayList<>(20);
-        List<Integer> t = new ArrayList<>(20);
-        for (int i = 0; i < 20; i++) {
-            h.add(i);
-            t.add(i);
-        }
-        Collections.shuffle(h);
-        Collections.shuffle(t);
-        CrackerMap<Integer, Integer> m = new CrackerMap<>(h, t);
-        
-        //input set to sort the head of the map
-        m.scan(1, 4);
-        m.scan(1, 2);
-        m.scan(1, 3);
-        m.scan(2, 4);
-        m.scan(4, 6);
-        m.scan(5, 6);
-        m.scan(6, 7);
-        m.scan(7, 16);
-        m.scan(10, 14);
-        m.scan(10, 12);
-        m.scan(10, 11);
-        m.scan(11, 12);
-        m.scan(12, 14);
-        m.scan(13, 14);
-        m.scan(15, 19);
-        m.scan(16, 18);
-        m.scan(18, 19);
-        m.scan(8, 10);
-        m.scan(9, 10);
-        int i = 0;
-        for (Tuple<Integer, Integer> tu : m) {
-            System.out.println((i++) + "L: " + tu);
         }
     }
 
@@ -96,7 +59,8 @@ public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable
         return null;
     }
 
-    private Integer findIndex(Head key) {
+    @SuppressWarnings("rawtypes")
+	private Integer findIndex(Head key) {
         Integer idx = null;
         Map.Entry<Head, Piece> ceil = index.ceilingEntry(key);
         Map.Entry<Head, Piece> floor = index.floorEntry(key);
@@ -141,7 +105,8 @@ public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable
         return bitSet;
     }
 
-    private void crack(long low, long high) {
+    @SuppressWarnings("unused")
+	private void crack(long low, long high) {
 
     }
 
@@ -261,22 +226,5 @@ public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable
     @Override
     public Iterator<Tuple<Head, Tail>> iterator() {
         return map.iterator();
-    }
-
-    /**
-     * Stores a position 'p' referring to the cracker column.
-     * all values before position p are smaller than v and all values after p are greater.
-     */
-    private static class Piece<H> {
-        public H value;                             // value in head
-        public int position;                        // position of value in head
-        public boolean leftInc, rightInc;           // <= left-inclusive? or >= right-inclusive
-
-        public Piece(H value, int position, boolean leftInc, boolean rightInc) {
-            this.value = value;
-            this.position = position;
-            this.leftInc = leftInc;
-            this.rightInc = rightInc;
-        }
     }
 }
