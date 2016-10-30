@@ -15,27 +15,20 @@ public class TestCracker {
         Collections.shuffle(h);
         Collections.shuffle(t);
         CrackerMap<Integer, Integer> m = new CrackerMap<>(h, t);
-        
         //input set to sort the head of the map
-        m.scan(1, 4);
-        m.scan(1, 2);
-        m.scan(1, 3);
-        m.scan(2, 4);
-        m.scan(4, 6);
-        m.scan(5, 6);
-        m.scan(6, 7);
         m.scan(7, 16);
         m.scan(10, 14);
         m.scan(10, 12);
-        m.scan(10, 11);
-        m.scan(11, 12);
-        m.scan(12, 14);
-        m.scan(13, 14);
+        m.scan(12, 15);
         m.scan(15, 19);
         m.scan(16, 18);
-        m.scan(18, 19);
+        m.scan(1, 3);
+        m.scan(2, 5);
+        m.scan(3, 4);
+        m.scan(6, 8);
+        m.scan(7, 9);
         m.scan(8, 10);
-        m.scan(9, 10);
+        m.scan(7, 8);
         int i = 0;
         for (Tuple<Integer, Integer> tu : m) {
             System.out.println((i++) + "L: " + tu);
