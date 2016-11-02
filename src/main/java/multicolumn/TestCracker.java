@@ -1,37 +1,34 @@
 package multicolumn;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+
 
 public class TestCracker {
-	public static void main(String[] args) {
-        List<Integer> h = new ArrayList<>(20);
-        List<Integer> t = new ArrayList<>(20);
-        for (int i = 0; i < 20; i++) {
-            h.add(i);
-            t.add(i);
-        }
-        Collections.shuffle(h);
-        Collections.shuffle(t);
+    public static void main(String[] args) {
+        List<Integer> h = new ArrayList<>(Arrays.asList(13, 16, 4, 9, 2, 12, 7, 1, 19, 3, 14, 11, 8, 6));
+        List<Integer> t = new ArrayList<>(Collections.nCopies(14, 0));
+
         CrackerMap<Integer, Integer> m = new CrackerMap<>(h, t);
+
+
         //input set to sort the head of the map
-        m.scan(7, 16);
-        m.scan(10, 14);
-        m.scan(10, 12);
-        m.scan(12, 15);
-        m.scan(15, 19);
-        m.scan(16, 18);
-        m.scan(1, 3);
-        m.scan(2, 5);
-        m.scan(3, 4);
-        m.scan(6, 8);
-        m.scan(7, 9);
-        m.scan(8, 10);
-        m.scan(7, 8);
+        printI(m.scan(10, 14, false, false));
+        System.out.print(m);
+
+        printI(m.scan(7, 16, false, true));
+        System.out.print(m);
+
+        printI(m.scan(8,14, true, true));
+        System.out.print(m);
+    }
+
+    private static void printI(Iterator<Tuple<Integer, Integer>> scan) {
+
+        System.out.println("----------------");
         int i = 0;
-        for (Tuple<Integer, Integer> tu : m) {
-            System.out.println((i++) + "L: " + tu);
+        while (scan.hasNext()) {
+            System.out.println((i++) + "L: " + scan.next());
         }
+        System.out.println("----------------");
     }
 }

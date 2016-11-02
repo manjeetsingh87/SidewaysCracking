@@ -1,14 +1,9 @@
 package multicolumn;
 
-import static java.util.Collections.swap;
-
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.function.BiFunction;
+
+import static java.util.Collections.swap;
 
 /**
  * Two column index.
@@ -16,7 +11,7 @@ import java.util.function.BiFunction;
 public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable<Tuple<Head, Tail>> {
     private List<Tuple<Head, Tail>> map;
     @SuppressWarnings("rawtypes")
-	private TreeMap<Head, Piece> index;
+    private TreeMap<Head, Piece> index;
 
     // private int tapePosition = 0;
 
@@ -32,7 +27,7 @@ public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable
         }
     }
 
-    public Iterator<Tuple<Head, Tail>> scan(Head low, Head high) {
+    public Iterator<Tuple<Head, Tail>> scan(Head low, Head high, boolean lowInc, boolean highInc) {
 //        Align to Tape.
 //        CrackerTape crackerTape = registry.tapeFor();
 //        ListIterator<CrackerTape.Node> pendingAlignments = crackerTape.alignFrom(tapePosition);
@@ -45,22 +40,25 @@ public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable
         // if exits return iterator
         // else : crack & update index
         if (index.isEmpty()) {
-            int[] pieces = crackInThree(0, map.size() - 1, low, high, true, true);
-            index.put(low, new Piece<>(low, pieces[0], true, true));
-            index.put(high, new Piece<>(high, pieces[1], true, true));
+            int[] pieces = crackInThree(0, map.size() - 1, low, high, lowInc, highInc);
+            index.put(map.get(pieces[0]).head, new Piece<>(map.get(pieces[0]).head, pieces[0], true, true));
+            index.put(map.get(pieces[1]).head, new Piece<>(map.get(pieces[1]).head, pieces[1], true, true));
             return map.subList(pieces[0], pieces[1] + 1).iterator();
         }
 
-        Integer lowIdx = findIndex(low);
-        Integer highIdx = findIndex(high);
+        Integer lowIdx = findIndex(low, lowInc, highInc);
+        Integer highIdx = findIndex(high, lowInc, highInc);
         if (lowIdx != null && highIdx != null) {
-            return map.subList(lowIdx, highIdx).iterator();
+            // TODO: high + 1?
+            //highIdx = highIdx.equals(high) ? highIdx+1 : highIdx;
+            System.out.println(highIdx+"----"+high);
+            return map.subList(lowIdx, highIdx+1).iterator();
         }
         return null;
     }
 
     @SuppressWarnings("rawtypes")
-	private Integer findIndex(Head key) {
+    private Integer findIndex(Head key, boolean lowInc, boolean highInc) {
         Integer idx = null;
         Map.Entry<Head, Piece> ceil = index.ceilingEntry(key);
         Map.Entry<Head, Piece> floor = index.floorEntry(key);
@@ -68,20 +66,24 @@ public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable
             Head hF = floor.getKey(), hC = ceil.getKey();
             if (inRange(key, hF, hC)) {
                 int pieceIdx = crackInTwo(floor.getValue().position, ceil.getValue().position, key, true);
-                index.put(key, new Piece<>(key, pieceIdx, true, true));
+                index.put(map.get(pieceIdx).head, new Piece<>(map.get(pieceIdx).head, pieceIdx, true, true));
                 idx = pieceIdx;
             } else {
                 // TODO: always in the range?
                 // TODO: ceil & floor equals key?
-                idx = ceil.getValue().position;
+                idx = ceil.getValue().position + 1;
+                System.err.print("--");
+//                int pieceIdx = crackInTwo(floor.getValue().position - 1, ceil.getValue().position, key, true);
+//                index.put(map.get(pieceIdx).head, new Piece<>(map.get(pieceIdx).head, pieceIdx, true, true));
+//                idx = pieceIdx;
             }
         } else if (ceil != null && floor == null) {
             int pieceIdx = crackInTwo(0, ceil.getValue().position, key, true);
-            index.put(key, new Piece<>(key, pieceIdx, true, true));
+            index.put(map.get(pieceIdx).head, new Piece<>(map.get(pieceIdx).head, pieceIdx, true, true));
             idx = pieceIdx;
         } else if (floor != null && ceil == null) {
             int pieceIdx = crackInTwo(floor.getValue().position, map.size() - 1, key, true);
-            index.put(key, new Piece<>(key, pieceIdx, true, true));
+            index.put(map.get(pieceIdx).head, new Piece<>(map.get(pieceIdx).head, pieceIdx, true, true));
             idx = pieceIdx;
         } else {
             // TODO: both null , 3-way? should not occur?
@@ -106,7 +108,7 @@ public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable
     }
 
     @SuppressWarnings("unused")
-	private void crack(long low, long high) {
+    private void crack(long low, long high) {
 
     }
 
@@ -226,5 +228,25 @@ public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable
     @Override
     public Iterator<Tuple<Head, Tail>> iterator() {
         return map.iterator();
+    }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder();
+        sb.append("----------------------\n");
+        int i = 0;
+        for (Tuple<Head, Tail> t : map) {
+            sb.append(i++);
+            sb.append("L : ");
+            sb.append(t.head);
+            if (index.containsKey(t.head)) {
+                sb.append(' ');
+                sb.append("<--");
+            }
+            sb.append('\n');
+        }
+        sb.append(index.keySet());
+        sb.append("\n----------------------\n");
+        return sb.toString();
     }
 }
