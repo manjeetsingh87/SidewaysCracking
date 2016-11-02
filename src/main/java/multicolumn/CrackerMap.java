@@ -65,7 +65,7 @@ public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable
         if (ceil != null && floor != null) {
             Head hF = floor.getKey(), hC = ceil.getKey();
             if (inRange(key, hF, hC)) {
-                int pieceIdx = crackInTwo(floor.getValue().position, ceil.getValue().position, key, true);
+                int pieceIdx = crackInTwo(floor.getValue().position, ceil.getValue().position, key, false);
                 index.put(map.get(pieceIdx).head, new Piece<>(map.get(pieceIdx).head, pieceIdx, true, true));
                 idx = pieceIdx;
             } else {
@@ -118,12 +118,12 @@ public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable
 
         BiFunction<Head, Head, Boolean> theta1 = (head1, head2) -> {
             int compareTo = head1.compareTo(head2);
-            return !inc ? compareTo < 0 : compareTo <= 0;
+            return (!inc) ? (compareTo < 0 ) : ( compareTo <= 0 );
         };
 
         BiFunction<Head, Head, Boolean> theta2 = (head1, head2) -> {
             int compareTo = head1.compareTo(head2);
-            return !inc ? compareTo >= 0 : compareTo > 0;
+            return (!inc) ? (compareTo >= 0) : (compareTo > 0);
         };
 
         while (x1 < x2) {
@@ -217,7 +217,7 @@ public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable
         if (incL && incH) {
             return compareTo < 0;
         } else if (incL && !incH) {
-            return compareTo < 0;
+            return compareTo <= 0;
         } else if (!incL && incH) {
             return compareTo <= 0;
         } else {
