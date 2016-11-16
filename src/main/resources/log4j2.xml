@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="DEBUG">
+    <Properties>
+        <Property name="logFileName">sideways_cracking</Property>
+    </Properties>
+
+    <Appenders>
+        <!-- Async Loggers will auto-flush in batches, so switch off immediateFlush. -->
+        <RollingRandomAccessFile name="FILE"
+                                 immediateFlush="false" fileName="logs/${logFileName}.log"
+                                 filePattern="logs/${logFileName}-%d{MM-dd-yyyy}-%i.log.gz">
+            <PatternLayout
+                    pattern="%d{dd MMM yyyy HH:mm:ss,SSS} %5p %marker [%t] %c{1}:%L - %m%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+        </RollingRandomAccessFile>
+        <Console name="CONSOLE" target="SYSTEM_OUT">
+            <PatternLayout
+                    pattern="%d{dd MMM yyyy HH:mm:ss,SSS} %5p %marker %c{1}:%L - %m%n"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <AsyncRoot level="DEBUG" includeLocation="true">
+            <AppenderRef ref="FILE" level="INFO"/>
+            <AppenderRef ref="CONSOLE" level="INFO"/>
+        </AsyncRoot>
+    </Loggers>
+</Configuration>

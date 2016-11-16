@@ -1,23 +1,37 @@
 package multicolumn;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
+
+import java.text.MessageFormat;
 import java.util.*;
-import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 import static java.util.Collections.swap;
 
 /**
  * Two column index.
  */
-public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable<Tuple<Head, Tail>> {
+public class CrackerMap<Head extends Comparable<Head>, Tail> implements Cracking<Head>, Iterable<Tuple<Head, Tail>> {
+    private static final Logger LOG = LoggerFactory.getLogger(CrackerMap.class);
+    private static final Marker QUERY_MARKER = MarkerFactory.getMarker("QUERY");
+    private static final Marker MAP_MARKER = MarkerFactory.getMarker("CRACKER_MAP");
+    private final boolean sorted;
     private List<Tuple<Head, Tail>> map;
-    @SuppressWarnings("rawtypes")
-    private TreeMap<Head, Piece> index;
+    private TreeMap<Head, Piece<Head>> index;
 
     // private int tapePosition = 0;
 
     public CrackerMap(List<Head> head, List<Tail> tail) {
+        this(head, tail, false);
+    }
+
+    public CrackerMap(List<Head> head, List<Tail> tail, boolean sorted) {
         this.map = new ArrayList<>(head.size());
         this.index = new TreeMap<>();
+        this.sorted = sorted;
 
         Iterator<Head> headIterator = head.iterator();
         Iterator<Tail> tailIterator = tail.iterator();
@@ -27,7 +41,7 @@ public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable
         }
     }
 
-    public Iterator<Tuple<Head, Tail>> scan(Head low, Head high, boolean lowInc, boolean highInc) {
+    public List<Tuple<Head, Tail>> scan(Head low, Head high) {
 //        Align to Tape.
 //        CrackerTape crackerTape = registry.tapeFor();
 //        ListIterator<CrackerTape.Node> pendingAlignments = crackerTape.alignFrom(tapePosition);
@@ -39,190 +53,70 @@ public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable
         // query map to find contiguous area.
         // if exits return iterator
         // else : crack & update index
+        if (sorted) {
+            int lowIdx = Collections.binarySearch(map, new Tuple<>(low, null));
+            if (lowIdx < 0) lowIdx = -(lowIdx + 1);
+            int highIdx = Collections.binarySearch(map, new Tuple<>(high, null));
+            if (highIdx < 0) highIdx = -(highIdx + 1);
+            return map.subList(lowIdx, highIdx);
+        }
         if (index.isEmpty()) {
-            int[] pieces = crackInThree(0, map.size() - 1, low, high, lowInc, highInc);
-            index.put(map.get(pieces[0]).head, new Piece<>(map.get(pieces[0]).head, pieces[0], true, true));
-            index.put(map.get(pieces[1]).head, new Piece<>(map.get(pieces[1]).head, pieces[1], true, true));
-            return map.subList(pieces[0], pieces[1] + 1).iterator();
+            LOG.debug(QUERY_MARKER, "crackInThree: {} < H < {}", low, high);
+            int[] pieces = crackInThree(0, map.size() - 1, low, high);
+            index.put(low, new Piece<>(low, Math.max(0, pieces[0] - 1)));
+            index.put(high, new Piece<>(high, pieces[1]));
+            LOG.debug(MAP_MARKER, "{}", this);
+            return map.subList(pieces[0], pieces[1]);
         }
 
-        Integer lowIdx = findIndex(low, lowInc, highInc);
-        Integer highIdx = findIndex(high, lowInc, highInc);
+        Integer lowIdx = findIndex(low);
+        Integer highIdx = findIndex(high);
         if (lowIdx != null && highIdx != null) {
-            // TODO: high + 1?
-            //highIdx = highIdx.equals(high) ? highIdx+1 : highIdx;
-            System.out.println(highIdx+"----"+high);
-            return map.subList(lowIdx, highIdx+1).iterator();
+            return map.subList(lowIdx, highIdx);
         }
-        return null;
+        return Collections.emptyList();
     }
 
-    @SuppressWarnings("rawtypes")
-    private Integer findIndex(Head key, boolean lowInc, boolean highInc) {
+    private Integer findIndex(Head key) {
         Integer idx = null;
-        Map.Entry<Head, Piece> ceil = index.ceilingEntry(key);
-        Map.Entry<Head, Piece> floor = index.floorEntry(key);
+        Map.Entry<Head, Piece<Head>> ceil = index.ceilingEntry(key);
+        Map.Entry<Head, Piece<Head>> floor = index.floorEntry(key);
+
         if (ceil != null && floor != null) {
-            Head hF = floor.getKey(), hC = ceil.getKey();
-            if (inRange(key, hF, hC)) {
-                int pieceIdx = crackInTwo(floor.getValue().position, ceil.getValue().position, key, false);
-                index.put(map.get(pieceIdx).head, new Piece<>(map.get(pieceIdx).head, pieceIdx, true, true));
+            Head floorH = floor.getKey(), ceilH = ceil.getKey();
+            int floorCompare = key.compareTo(floorH);
+            int ceilCompare = key.compareTo(ceilH);
+            if (floorCompare > 0 && ceilCompare < 0) { // in range
+                LOG.debug(QUERY_MARKER, "crackInTwo: {}", key);
+                int pieceIdx = crackInTwo(floor.getValue().position + 1, ceil.getValue().position, key);
+                index.put(key, new Piece<>(key, Math.max(0, pieceIdx - 1)));
+                LOG.debug(MAP_MARKER, "{}", this);
                 idx = pieceIdx;
-            } else {
-                // TODO: always in the range?
-                // TODO: ceil & floor equals key?
-                idx = ceil.getValue().position + 1;
-                System.err.print("--");
-//                int pieceIdx = crackInTwo(floor.getValue().position - 1, ceil.getValue().position, key, true);
-//                index.put(map.get(pieceIdx).head, new Piece<>(map.get(pieceIdx).head, pieceIdx, true, true));
-//                idx = pieceIdx;
+            } else if (floorCompare == 0 && ceilCompare == 0) { // exists
+                idx = floor.getValue().position + 1;
             }
-        } else if (ceil != null && floor == null) {
-            int pieceIdx = crackInTwo(0, ceil.getValue().position, key, true);
-            index.put(map.get(pieceIdx).head, new Piece<>(map.get(pieceIdx).head, pieceIdx, true, true));
+        } else if (ceil != null) {
+            LOG.debug(QUERY_MARKER, "crackInTwo: {}", key);
+            int pieceIdx = crackInTwo(0, ceil.getValue().position, key);
+            index.put(key, new Piece<>(key, Math.max(0, pieceIdx - 1)));
+            LOG.debug(MAP_MARKER, "{}", this);
             idx = pieceIdx;
-        } else if (floor != null && ceil == null) {
-            int pieceIdx = crackInTwo(floor.getValue().position, map.size() - 1, key, true);
-            index.put(map.get(pieceIdx).head, new Piece<>(map.get(pieceIdx).head, pieceIdx, true, true));
+        } else if (floor != null) {
+            LOG.debug(QUERY_MARKER, "crackInTwo: {}", key);
+            int pieceIdx = crackInTwo(floor.getValue().position + 1, map.size() - 1, key);
+            index.put(key, new Piece<>(key, Math.max(0, pieceIdx - 1)));
+            LOG.debug(MAP_MARKER, "{}", this);
             idx = pieceIdx;
-        } else {
-            // TODO: both null , 3-way? should not occur?
-            System.out.println("findIndex: floor & ceil are null. Missing case?");
         }
         return idx;
     }
 
-    private boolean inRange(Head low, Head floor, Head ceil) {
-        int floorCompare = low.compareTo(floor);
-        int ceilCompare = low.compareTo(ceil);
-        return floorCompare > 0 && ceilCompare < 0;
+    public void exchange(int i, int j) {
+        if (i != j) swap(map, i, j);
     }
 
-    // For multi-select queries.
-    // Ex: SELECT D from R where 3<A<10 AND 4<B<9 AND 1<C<8
-    public BitSet create_bv(long low, long high) {
-        BitSet bitSet = new BitSet(map.size());
-        // scan and set bits.
-
-        return bitSet;
-    }
-
-    @SuppressWarnings("unused")
-    private void crack(long low, long high) {
-
-    }
-
-
-    private int crackInTwo(int pLow, int pHigh, Head med, boolean inc) {
-        int x1 = pLow, x2 = pHigh;
-
-        BiFunction<Head, Head, Boolean> theta1 = (head1, head2) -> {
-            int compareTo = head1.compareTo(head2);
-            return (!inc) ? (compareTo < 0 ) : ( compareTo <= 0 );
-        };
-
-        BiFunction<Head, Head, Boolean> theta2 = (head1, head2) -> {
-            int compareTo = head1.compareTo(head2);
-            return (!inc) ? (compareTo >= 0) : (compareTo > 0);
-        };
-
-        while (x1 < x2) {
-            if (theta1.apply(value(x1), med)) {
-                x1++;
-            } else {
-                while (theta2.apply(value(x2), med) && x2 > x1) {
-                    x2--;
-                }
-                exchange(x1, x2);
-                x1++;
-                x2--;
-            }
-        }
-        // TODO:
-
-        return x2;
-    }
-
-    private int[] crackInThree(int pLow, int pHigh, Head low, Head high, boolean incL, boolean incH) {
-        int x1 = pLow, x2 = pHigh;
-
-        while (theta1(value(x2), high, incL, incH) && x2 > x1) {
-            x2--;
-        }
-
-        int x3 = x2;
-
-        while (theta2(value(x3), low, incL, incH) && x3 > x1) {
-            if (theta1(value(x3), high, incL, incH)) {
-                exchange(x2, x3);
-                x2--;
-            }
-            x3--;
-        }
-
-        while (x1 <= x3) {
-            if (theta3(value(x1), low, incL, incH)) {
-                x1++;
-            } else {
-                exchange(x1, x3);
-                while (theta2(value(x3), low, incL, incH) && x3 > x1) {
-                    if (theta1(value(x3), high, incL, incH)) {
-                        exchange(x2, x3);
-                        x2--;
-                    }
-                    x3--;
-                }
-            }
-        }
-
-        return new int[]{x1, x2};
-    }
-
-    private void exchange(int i, int j) {
-        swap(map, i, j);
-    }
-
-    private Head value(int i) {
+    public Head value(int i) {
         return map.get(i).head;
-    }
-
-    private boolean theta1(Head head1, Head head2, boolean incL, boolean incH) {
-        int compareTo = head1.compareTo(head2);
-        if (incL && incH) {
-            return compareTo > 0;
-        } else if (incL && !incH) {
-            return compareTo >= 0;
-        } else if (!incL && incH) {
-            return compareTo > 0;
-        } else {
-            return compareTo >= 0;
-        }
-    }
-
-    private boolean theta2(Head head1, Head head2, boolean incL, boolean incH) {
-        int compareTo = head1.compareTo(head2);
-        if (incL && incH) {
-            return compareTo >= 0;
-        } else if (incL && !incH) {
-            return compareTo >= 0;
-        } else if (!incL && incH) {
-            return compareTo > 0;
-        } else {
-            return compareTo > 0;
-        }
-    }
-
-    private boolean theta3(Head head1, Head head2, boolean incL, boolean incH) {
-        int compareTo = head1.compareTo(head2);
-        if (incL && incH) {
-            return compareTo < 0;
-        } else if (incL && !incH) {
-            return compareTo <= 0;
-        } else if (!incL && incH) {
-            return compareTo <= 0;
-        } else {
-            return compareTo < 0;
-        }
     }
 
     @Override
@@ -232,21 +126,35 @@ public class CrackerMap<Head extends Comparable<Head>, Tail> implements Iterable
 
     @Override
     public String toString() {
+        return tuplesToString(map.iterator(), "MAP", index);
+    }
+
+    public static <H extends Comparable<H>, T> String tuplesToString(Iterator<Tuple<H, T>> iterator, String query) {
+        return tuplesToString(iterator, query, null);
+    }
+
+    private static <H extends Comparable<H>, T> String tuplesToString(Iterator<Tuple<H, T>> iterator, String query, TreeMap<H, Piece<H>> index) {
         final StringBuilder sb = new StringBuilder();
-        sb.append("----------------------\n");
+        sb.append("\n\n      ");
+        sb.append(query);
+        sb.append("\n      ___________\n");
         int i = 0;
-        for (Tuple<Head, Tail> t : map) {
-            sb.append(i++);
-            sb.append("L : ");
-            sb.append(t.head);
-            if (index.containsKey(t.head)) {
+        Map<Integer, List<Piece<H>>> indexPos = index != null ? index.values().stream().collect(Collectors.groupingBy(Piece::getPosition)) : Collections.emptyMap();
+        while (iterator.hasNext()) {
+            Tuple<H, T> t = iterator.next();
+            sb.append(MF.format(new Object[]{i, t.head, t.tail}));
+            if (!indexPos.isEmpty() && indexPos.containsKey(i)) {
                 sb.append(' ');
-                sb.append("<--");
+                sb.append("< ");
+                String collect = indexPos.get(i).stream().map(Piece::getValue).map(Object::toString).collect(Collectors.joining(", "));
+                sb.append(collect);
             }
             sb.append('\n');
+            i++;
         }
-        sb.append(index.keySet());
-        sb.append("\n----------------------\n");
+        sb.append("      -----------\n");
         return sb.toString();
     }
+
+    private static final MessageFormat MF = new MessageFormat("{0, number, 00}: | {1, number, 00} | {2, number, 00} |", Locale.ENGLISH);
 }
