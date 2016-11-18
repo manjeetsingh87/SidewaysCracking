@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class CrackingTest {
     private ArrayColumn c;
-    private int N = 10000;
+    private final int N = 10000;
 
     @Rule
     public RepeatRule repeatRule = new RepeatRule();

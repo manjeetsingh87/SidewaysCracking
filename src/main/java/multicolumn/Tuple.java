@@ -3,8 +3,8 @@ package multicolumn;
 import java.util.Objects;
 
 class Tuple<H extends Comparable<H>, T> implements Comparable<Tuple<H, T>> {
-    public H head;
-    public T tail;
+    public final H head;
+    public final T tail;
 
     Tuple(H head, T tail) {
         this.head = head;

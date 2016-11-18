@@ -15,9 +15,9 @@ import static multicolumn.RangeTest.randomRange;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class CrackerMapTest {
-    private static final int N = 1000;
+    private static final int N = 10000;
 
-    CrackerMap<Integer, Integer> crackerMap;
+    private CrackerMap<Integer, Integer> crackerMap;
 
     @Rule
     public RepeatRule repeatRule = new RepeatRule();
@@ -31,9 +31,9 @@ public class CrackerMapTest {
     }
 
     @Test
-    @Repeat(10)
+    @Repeat(100)
     public void scan() throws Exception {
-        for (int k = 0; k < N / 2; k++) {
+        for (int k = 0; k < N; k++) {
             int[] range = randomRange(N);
             int low = range[0], high = range[1];
 

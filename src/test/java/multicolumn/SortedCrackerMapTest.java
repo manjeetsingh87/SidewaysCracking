@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class SortedCrackerMapTest {
     private static final int N = 1000;
 
-    CrackerMap<Integer, Integer> crackerMap;
+    private CrackerMap<Integer, Integer> crackerMap;
 
     @Rule
     public RepeatRule repeatRule = new RepeatRule();

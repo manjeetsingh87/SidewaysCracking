@@ -4,7 +4,7 @@ import java.util.Collections;
 import java.util.List;
 
 class ArrayColumn implements Cracking<Integer> {
-    private List<Integer> col;
+    private final List<Integer> col;
 
     ArrayColumn(List<Integer> l) {
         col = l;

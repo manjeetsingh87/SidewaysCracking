@@ -1,6 +1,5 @@
 package multicolumn;
 
-
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.List;
@@ -14,6 +13,12 @@ public class RangeTest {
     }
 
     public static int[] randomRange(int N) {
+        int[] r = new int[2];
+        randomRange(N, r);
+        return r;
+    }
+
+    public static void randomRange(int N, int[] r) {
         int low = 0, high = 0;
         while (low >= high) {
             int i = SECURE_RANDOM.nextInt(N);
@@ -21,7 +26,8 @@ public class RangeTest {
             low = Math.min(i, j);
             high = Math.max(i, j);
         }
-        return new int[]{low, high};
+        r[0] = low;
+        r[1] = high;
     }
 
     public static int[] randomArray(int size, int max) {
