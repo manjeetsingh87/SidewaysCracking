@@ -1,8 +1,8 @@
-package multicolumn;
+package com.ub.columndb;
 
 import java.util.Objects;
 
-class Tuple<H extends Comparable<H>, T> implements Comparable<Tuple<H, T>> {
+public class Tuple<H extends Comparable<H>, T> implements Comparable<Tuple<H, T>> {
     public final H head;
     public final T tail;
 

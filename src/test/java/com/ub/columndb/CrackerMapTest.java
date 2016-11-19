@@ -1,4 +1,4 @@
-package multicolumn;
+package com.ub.columndb;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -10,14 +10,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static multicolumn.RangeTest.randomList;
-import static multicolumn.RangeTest.randomRange;
+import static bench.RangeUtils.randomList;
+import static bench.RangeUtils.randomRange;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class CrackerMapTest {
-    private static final int N = 10000;
+    private static final int N = 1000;
 
-    private CrackerMap<Integer, Integer> crackerMap;
+    private CrackerMap<Integer> crackerMap;
 
     @Rule
     public RepeatRule repeatRule = new RepeatRule();
@@ -27,7 +27,7 @@ public class CrackerMapTest {
         List<Integer> h = randomList(N, N);
         List<Integer> t = new ArrayList<>(Collections.nCopies(N, 0));
 
-        crackerMap = new CrackerMap<>(h, t);
+        crackerMap = new CrackerMap<>(h, t, new CrackerTape<>());
     }
 
     @Test

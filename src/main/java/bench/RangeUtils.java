@@ -1,11 +1,11 @@
-package multicolumn;
+package bench;
 
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.List;
 
 
-public class RangeTest {
+public class RangeUtils {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     public static int randomInt(int N) {
@@ -21,10 +21,9 @@ public class RangeTest {
     public static void randomRange(int N, int[] r) {
         int low = 0, high = 0;
         while (low >= high) {
-            int i = SECURE_RANDOM.nextInt(N);
-            int j = SECURE_RANDOM.nextInt(N);
-            low = Math.min(i, j);
-            high = Math.max(i, j);
+            int[] ints = SECURE_RANDOM.ints(2, 0, N).toArray();
+            low = Math.min(ints[0], ints[1]);
+            high = Math.max(ints[0], ints[1]);
         }
         r[0] = low;
         r[1] = high;

@@ -1,4 +1,4 @@
-package multicolumn;
+package com.ub.columndb;
 
 
 public interface Cracking<T extends Comparable<T>> {
@@ -8,21 +8,17 @@ public interface Cracking<T extends Comparable<T>> {
      * Invariant: Arr[pLow, lt - 1] < low, low <= Arr[lt, gt] <= high, Arr[gt + 1, pHigh] >= high
      */
     default int[] crackInThree(int pLow, int pHigh, T low, T high) {
-        int lt = pLow, gt = pHigh, i = lt;
-        while (i <= gt) {
+        int lt = pLow, gt = pHigh;
+        for (int i = lt; i <= gt; i++) {
             if (value(i).compareTo(low) < 0) {
-                exchange(i, lt);
-                ++lt;
-            } else if (value(i).compareTo(high) >= 0) {
-                while (value(gt).compareTo(high) > 0 && i < gt) --gt;
-                exchange(i, gt);
-                --gt;
+                exchange(i, lt++);
+            } else if (value(i).compareTo(high) > 0) {
+                while (value(gt).compareTo(high) > 0 && i < gt) gt--;
+                exchange(i, gt--);
                 if (value(i).compareTo(low) < 0) {
-                    exchange(i, lt);
-                    ++lt;
+                    exchange(i, lt++);
                 }
             }
-            ++i;
         }
         return new int[]{lt, gt};
     }

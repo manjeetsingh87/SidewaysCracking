@@ -1,4 +1,4 @@
-package multicolumn;
+package com.ub.columndb;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -6,7 +6,10 @@ import org.junit.Test;
 import repeat.Repeat;
 import repeat.RepeatRule;
 
-import static multicolumn.RangeTest.*;
+import java.util.Collections;
+import java.util.List;
+
+import static bench.RangeUtils.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class CrackingTest {
@@ -45,5 +48,27 @@ public class CrackingTest {
         // assert crackInTwo invariant
         assertThat(c.range(0, pos - 1)).as("h < %d", med).allMatch(h -> h < med);
         assertThat(c.range(pos, N - 1)).as("h >= %d", med).allMatch(h -> h >= med);
+    }
+
+    static class ArrayColumn implements Cracking<Integer> {
+        private final List<Integer> col;
+
+        ArrayColumn(List<Integer> l) {
+            col = l;
+        }
+
+        @Override
+        public Integer value(int i) {
+            return col.get(i);
+        }
+
+        @Override
+        public void exchange(int i, int j) {
+            Collections.swap(col, i, j);
+        }
+
+        public List<Integer> range(int from, int to) {
+            return col.subList(from, to + 1);
+        }
     }
 }
