@@ -5,44 +5,63 @@ public interface Cracking<T extends Comparable<T>> {
 
     /**
      * Crack in three
-     * Invariant: Arr[pLow, lt - 1] < low, low <= Arr[lt, gt] <= high, Arr[gt + 1, pHigh] >= high
+     * @return 2-len pivot index array [pivL, pivH] such that
+     *                  arr[pLow, pivL] < low && low <= arr[pivL + 1, pivH] <= high && arr[pivH + 1, pHigh] >= high
      */
     default int[] crackInThree(int pLow, int pHigh, T low, T high) {
-        int lt = pLow, gt = pHigh;
-        for (int i = lt; i <= gt; i++) {
-            if (value(i).compareTo(low) < 0) {
-                exchange(i, lt++);
-            } else if (value(i).compareTo(high) > 0) {
-                while (value(gt).compareTo(high) > 0 && i < gt) gt--;
-                exchange(i, gt--);
-                if (value(i).compareTo(low) < 0) {
-                    exchange(i, lt++);
+        int x1 = pLow, x2 = pHigh;
+
+        while (x2 > x1 && value(x2).compareTo(high) >= 0)
+            x2--;
+
+        int x3 = x2;
+        while (x3 > x1 && value(x3).compareTo(low) >= 0) {
+            if (value(x3).compareTo(high) >= 0) {
+                exchange(x2, x3);
+                x2--;
+            }
+            x3--;
+        }
+
+        while (x1 <= x3) {
+            if (value(x1).compareTo(low) < 0)
+                x1++;
+            else {
+                exchange(x1, x3);
+//                while (x3 > x1 && value(x3).compareTo(low) >= 0) {
+                if (value(x3).compareTo(high) >= 0) {
+                    exchange(x2, x3);
+                    x2--;
                 }
+                x3--;
+//                }
             }
         }
-        return new int[]{lt, gt};
+
+        return new int[]{x3, x2};
     }
+
 
     /**
      * Crack in two
-     * Invariant: Arr[pLow, lt - 1] < med, Arr[lt, gt] = med, Arr[gt + 1, pHigh] > med
+     *
+     * @return pivot index such that arr[pLow, pivot] < med && arr[pivot, pHigh] >= med
      */
     default int crackInTwo(int pLow, int pHigh, T med) {
-        int i = pLow;
-        int lt = pLow, gt = pHigh;
-
-        while (i <= gt) {
-            int compareTo = value(i).compareTo(med);
-            if (compareTo < 0) {
-                exchange(lt++, i++);
-            } else if (compareTo > 0) {
-                exchange(i, gt--);
-            } else {
-                i++;
+        int x1 = pLow, x2 = pHigh;
+        while (x1 <= x2) {
+            if (value(x1).compareTo(med) < 0)
+                x1++;
+            else {
+                while (x2 >= x1 && value(x2).compareTo(med) >= 0) x2--;
+                if (x1 < x2) {
+                    exchange(x1, x2);
+                    x1++;
+                    x2--;
+                }
             }
         }
-
-        return lt;
+        return --x1;
     }
 
     T value(int i);

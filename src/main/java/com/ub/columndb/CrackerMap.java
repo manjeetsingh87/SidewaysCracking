@@ -12,39 +12,37 @@ import static java.util.Collections.swap;
 /**
  * Two column index.
  */
-class CrackerMap<T extends Comparable<T>> implements Cracking<T>, Iterable<Tuple<T, T>> {
+class CrackerMap<Head extends Comparable<Head>, Tail> implements Cracking<Head>, Iterable<Tuple<Head, Tail>> {
     private static final Logger LOG = LoggerFactory.getLogger(CrackerMap.class);
     private static final Marker QUERY_MARKER = MarkerFactory.getMarker("QUERY");
 
-    private final CrackerTape<T> tape;
+    private final CrackerTape<Head> tape;
     private int tapePosition = 0;
 
-
     private final boolean sorted;
-    private final List<Tuple<T, T>> map;
-    private final TreeMap<T, Integer> index;
+    private final List<Tuple<Head, Tail>> map;
+    private final TreeMap<Head, Integer> index;
 
-    CrackerMap(List<T> head, List<T> tail, CrackerTape<T> tape) {
+    CrackerMap(List<Head> head, List<Tail> tail, CrackerTape<Head> tape) {
         this(head, tail, tape, false);
     }
 
-    CrackerMap(List<T> head, List<T> tail, CrackerTape<T> tape, boolean isSorted) {
+    CrackerMap(List<Head> head, List<Tail> tail, CrackerTape<Head> tape, boolean isSorted) {
+        assert head.size() == tail.size();
+
         this.tape = tape;
         this.map = new ArrayList<>(head.size());
         this.index = new TreeMap<>();
         this.sorted = isSorted;
 
-        Iterator<T> headIterator = head.iterator();
-        Iterator<T> tailIterator = tail.iterator();
-
-        while (headIterator.hasNext() && tailIterator.hasNext()) {
-            map.add(new Tuple<>(headIterator.next(), tailIterator.next()));
+        for (int i = 0; i < head.size(); i++) {
+            map.add(new Tuple<>(head.get(i), tail.get(i)));
         }
     }
 
-    List<Tuple<T, T>> scan(T low, T high) {
+    List<Tuple<Head, Tail>> scan(Head low, Head high) {
         // align to tape.
-        for (CrackerTape.Log<T> log : tape.fromPosition(tapePosition)) {
+        for (CrackerTape.Log<Head> log : tape.fromPosition(tapePosition)) {
             tapePosition++;
             switch (log.type) {
                 case TWO: {
@@ -70,10 +68,10 @@ class CrackerMap<T extends Comparable<T>> implements Cracking<T>, Iterable<Tuple
             lowIdx = pieces[0];
             highIdx = pieces[1];
         } else {
-            Map.Entry<T, Integer> lowCeil = index.ceilingEntry(low);
-            Map.Entry<T, Integer> lowFloor = index.floorEntry(low);
-            Map.Entry<T, Integer> highCeil = index.ceilingEntry(high);
-            Map.Entry<T, Integer> highFloor = index.floorEntry(high);
+            Map.Entry<Head, Integer> lowCeil = index.ceilingEntry(low);
+            Map.Entry<Head, Integer> lowFloor = index.floorEntry(low);
+            Map.Entry<Head, Integer> highCeil = index.ceilingEntry(high);
+            Map.Entry<Head, Integer> highFloor = index.floorEntry(high);
 
             if (Objects.equals(lowCeil, highCeil) && Objects.equals(lowFloor, highFloor)) {
                 int pLow = lowFloor == null ? 0 : lowFloor.getValue();
@@ -87,27 +85,27 @@ class CrackerMap<T extends Comparable<T>> implements Cracking<T>, Iterable<Tuple
             }
         }
 
-        return (lowIdx < highIdx && lowIdx != -1 && highIdx != -1) ? map.subList(lowIdx, highIdx) : Collections.emptyList();
+        return (lowIdx < highIdx && lowIdx != -1 && highIdx != -1) ? map.subList(++lowIdx, ++highIdx) : Collections.emptyList();
     }
 
-    private int findIndex(T key, Map.Entry<T, Integer> ceil, Map.Entry<T, Integer> floor) {
+    private int findIndex(Head key, Map.Entry<Head, Integer> ceil, Map.Entry<Head, Integer> floor) {
         if (ceil != null && floor != null) {
             int floorCompare = key.compareTo(floor.getKey());
             int ceilCompare = key.compareTo(ceil.getKey());
             if (floorCompare > 0 && ceilCompare < 0) { // in range
-                return crackTwo(key, floor.getValue() + 1, ceil.getValue(), true);
+                return crackTwo(key, floor.getValue(), ceil.getValue(), true);
             } else if (floorCompare == 0 && ceilCompare == 0) { // exists
-                return floor.getValue() + 1;
+                return floor.getValue();
             }
         } else if (ceil != null) {
             return crackTwo(key, 0, ceil.getValue(), true);
         } else if (floor != null) {
-            return crackTwo(key, floor.getValue() + 1, map.size() - 1, true);
+            return crackTwo(key, floor.getValue(), map.size() - 1, true);
         }
         return -1;
     }
 
-    private int[] crackThree(T low, T high, int pLow, int pHigh, boolean updateTape) {
+    private int[] crackThree(Head low, Head high, int pLow, int pHigh, boolean updateTape) {
         LOG.debug(QUERY_MARKER, "crackInThree: {} < H < {}", low, high);
 
         int[] pieces = crackInThree(pLow, pHigh, low, high);
@@ -117,12 +115,12 @@ class CrackerMap<T extends Comparable<T>> implements Cracking<T>, Iterable<Tuple
             tapePosition++;
         }
         // update index.
-        index.put(low, Math.max(0, pieces[0] - 1));
-        index.put(high, pieces[1]);
+        if (pieces[0] > 0) index.put(low, pieces[0]);
+        if (pieces[1] > 0) index.put(high, pieces[1]);
         return pieces;
     }
 
-    private int crackTwo(T key, int pLow, int pHigh, boolean updateTape) {
+    private int crackTwo(Head key, int pLow, int pHigh, boolean updateTape) {
         LOG.debug(QUERY_MARKER, "crackInTwo: {}", key);
         int pieceIdx = crackInTwo(pLow, pHigh, key);
         if (updateTape) {
@@ -131,7 +129,8 @@ class CrackerMap<T extends Comparable<T>> implements Cracking<T>, Iterable<Tuple
             tapePosition++;
         }
         // update index.
-        index.put(key, Math.max(0, pieceIdx - 1));
+        if (pieceIdx > 0) index.put(key, pieceIdx);
+
         return pieceIdx;
     }
 
@@ -139,46 +138,12 @@ class CrackerMap<T extends Comparable<T>> implements Cracking<T>, Iterable<Tuple
         if (i != j) swap(map, i, j);
     }
 
-    public T value(int i) {
+    public Head value(int i) {
         return map.get(i).head;
     }
 
     @Override
-    public Iterator<Tuple<T, T>> iterator() {
+    public Iterator<Tuple<Head, Tail>> iterator() {
         return map.iterator();
     }
-
-//    @Override
-//    public String toString() {
-//        return tuplesToString(map.iterator(), "MAP", index);
-//    }
-//
-//    public static <H extends Comparable<H>, T> String tuplesToString(Iterator<Tuple<H, T>> iterator, String query) {
-//        return tuplesToString(iterator, query, null);
-//    }
-//
-//    private static <H extends Comparable<H>, T> String tuplesToString(Iterator<Tuple<H, T>> iterator, String query, TreeMap<H, Piece<H>> index) {
-//        final StringBuilder sb = new StringBuilder();
-//        sb.append("\n\n      ");
-//        sb.append(query);
-//        sb.append("\n      ___________\n");
-//        int i = 0;
-//        Map<Integer, List<Piece<H>>> indexPos = index != null ? index.values().stream().collect(Collectors.groupingBy(Piece::getPosition)) : Collections.emptyMap();
-//        while (iterator.hasNext()) {
-//            Tuple<H, T> t = iterator.next();
-//            sb.append(MF.format(new Object[]{i, t.head, t.tail}));
-//            if (!indexPos.isEmpty() && indexPos.containsKey(i)) {
-//                sb.append(' ');
-//                sb.append("< ");
-//                String collect = indexPos.get(i).stream().map(Piece::getValue).map(Object::toString).collect(Collectors.joining(", "));
-//                sb.append(collect);
-//            }
-//            sb.append('\n');
-//            i++;
-//        }
-//        sb.append("      -----------\n");
-//        return sb.toString();
-//    }
-//
-//    private static final MessageFormat MF = new MessageFormat("{0, number, 00}: | {1, number, 00} | {2, number, 00} |", Locale.ENGLISH);
 }

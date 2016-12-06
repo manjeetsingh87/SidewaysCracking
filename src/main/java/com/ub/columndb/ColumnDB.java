@@ -1,54 +1,61 @@
 package com.ub.columndb;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
-public class ColumnDB<T extends Comparable<T>> {
-    private final Map<String, List<T>> columns = new HashMap<>();
+public class ColumnDB {
+    private static final Logger LOG = LoggerFactory.getLogger(ColumnDB.class);
+
+    private final Map<String, List<? extends Comparable>> columns = new HashMap<>();
     private final Map<String, Boolean> sortedColumns = new HashMap<>();
-    private final Map<String, Map<String, CrackerMap<T>>> mapSets = new HashMap<>();
-    private final Map<String, CrackerTape<T>> mapTapes = new HashMap<>();
+    private final Map<String, Map<String, CrackerMap<? extends Comparable, ?>>> mapSets = new HashMap<>();
+    private final Map<String, CrackerTape<? extends Comparable>> mapTapes = new HashMap<>();
 
-    public ColumnDB() {
-    }
-
-    public void addColumn(String col, List<T> colData) {
+    public <T extends Comparable<T>> void addColumn(String col, List<T> colData) {
         addColumn(col, colData, false);
     }
 
-    public void addColumn(String col, List<T> colData, boolean isSorted) {
+    public <T extends Comparable<T>> void addColumn(String col, List<T> colData, boolean isSorted) {
         columns.put(col, colData);
         sortedColumns.put(col, isSorted);
     }
 
-    public List<Tuple<T, T>> scan(String selectionCol, T low, T high, String projectionCol) {
-        return mapSets
-                .computeIfAbsent(selectionCol, s -> new HashMap<>())
-                .computeIfAbsent(projectionCol,
-                        s -> new CrackerMap<>(
-                                columns.get(selectionCol),
-                                columns.get(projectionCol),
-                                mapTapes.computeIfAbsent(selectionCol, x -> new CrackerTape<>()),
-                                sortedColumns.get(selectionCol)))
+    @SuppressWarnings("unchecked")
+    public <H extends Comparable<H>, T> List<Tuple<H, T>> scan(String selectionCol, H low, H high, String projectionCol) {
+        CrackerMap<H, T> crackerMap =
+                (CrackerMap<H, T>) mapSets
+                        .computeIfAbsent(selectionCol, s -> new HashMap<>())
+                        .computeIfAbsent(projectionCol,
+                                s -> {
+                                    long start = System.nanoTime();
+                                    CrackerMap<H, T> map = new CrackerMap<>(
+                                            (List<H>) columns.get(selectionCol),
+                                            (List<T>) columns.get(projectionCol),
+                                            (CrackerTape<H>) mapTapes.computeIfAbsent(selectionCol, x -> new CrackerTape<H>()),
+                                            sortedColumns.get(selectionCol));
+                                    LOG.info("Building CrackerMap[{}, {}] took {} mu.s", selectionCol, projectionCol,
+                                            TimeUnit.MICROSECONDS.convert(System.nanoTime() - start, TimeUnit.NANOSECONDS));
+                                    return map;
+                                });
+        return crackerMap
                 .scan(low, high);
     }
 
     // multi-projection queries, using multiple CrackerMaps
     // Select B, C from R where A < k, needs M-AB and M-AC
-    public List<List<Tuple<T, T>>> scan(String selectionCol, T low, T high, String... projectionCols) {
-        List<List<Tuple<T, T>>> projectionTuples = new ArrayList<>();
+    public <H extends Comparable<H>, T> List<List<Tuple<H, T>>> scan(String selectionCol, H low, H high, String... projectionCols) {
+        List<List<Tuple<H, T>>> projectionTuples = new ArrayList<>(projectionCols.length);
         for (String projectionCol : projectionCols) {
-            List<Tuple<T, T>> r = scan(selectionCol, low, high, projectionCol);
+            List<Tuple<H, T>> r = scan(selectionCol, low, high, projectionCol);
             if (!r.isEmpty()) projectionTuples.add(r);
         }
         return projectionTuples;
     }
 
-    // For multi-select queries, using multiple CrackerMaps and BitVectors.
-    // Ex: SELECT D from R where 3<A<10 AND 4<B<9 AND 1<C<8
-    public List<List<T>> scan(String col, String colA, long lowA, long highA, String colB, long lowB, long highB) {
-        return null;
-    }
 }

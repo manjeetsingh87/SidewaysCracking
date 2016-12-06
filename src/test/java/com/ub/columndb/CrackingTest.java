@@ -21,7 +21,7 @@ public class CrackingTest {
 
     @Before
     public void setUp() throws Exception {
-        c = new ArrayColumn(randomList(N, N));
+        c = new ArrayColumn(data(N));
     }
 
     @Test
@@ -33,9 +33,9 @@ public class CrackingTest {
         int[] pos = c.crackInThree(0, N - 1, low, high);
 
         // assert crackInThree invariant
-        assertThat(c.range(0, pos[0] - 1)).as("h < %d", low).allMatch(h -> h < low);
-        assertThat(c.range(pos[0], pos[1])).as("%d <= h <= %d", low, high).allMatch(h -> h >= low && h <= high);
-        assertThat(c.range(pos[1] + 1, N - 1)).as("h > %d", high).allMatch(h -> h >= high);
+        assertThat(c.range(0, pos[0])).as("h < %d", low).allMatch(h -> h < low);
+        assertThat(c.range(pos[0] + 1, pos[1])).as("%d <= h <= %d", low, high).allMatch(h -> h >= low && h <= high);
+        assertThat(c.range(pos[1] + 1, N - 1)).as("h >= %d", high).allMatch(h -> h >= high);
     }
 
     @Test
@@ -46,8 +46,8 @@ public class CrackingTest {
         int pos = c.crackInTwo(0, N - 1, med);
 
         // assert crackInTwo invariant
-        assertThat(c.range(0, pos - 1)).as("h < %d", med).allMatch(h -> h < med);
-        assertThat(c.range(pos, N - 1)).as("h >= %d", med).allMatch(h -> h >= med);
+        assertThat(c.range(0, pos)).as("h < %d", med).allMatch(h -> h < med);
+        assertThat(c.range(pos + 1, N - 1)).as("h >= %d", med).allMatch(h -> h >= med);
     }
 
     static class ArrayColumn implements Cracking<Integer> {
