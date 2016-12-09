@@ -16,12 +16,16 @@ class CrackerMap<Head extends Comparable<Head>, Tail> implements Cracking<Head>,
     private static final Logger LOG = LoggerFactory.getLogger(CrackerMap.class);
     private static final Marker QUERY_MARKER = MarkerFactory.getMarker("QUERY");
 
+    private static final boolean ENABLE_SORTING = "true".equals(System.getProperty("hybrid.crack-sort.enabled", "true"));
+    private static final int SORTING_THRESHOLD = Integer.getInteger("hybrid.crack-sort.threshold", 100);
+
     private final CrackerTape<Head> tape;
     private int tapePosition = 0;
 
-    private final boolean sorted;
+    private boolean sorted;
     private final List<Tuple<Head, Tail>> map;
-    private final TreeMap<Head, Integer> index;
+    private final TreeMap<Head, Partition> index;
+    private int numSortedPartitions = 0;
 
     CrackerMap(List<Head> head, List<Tail> tail, CrackerTape<Head> tape) {
         this(head, tail, tape, false);
@@ -56,51 +60,61 @@ class CrackerMap<Head extends Comparable<Head>, Tail> implements Cracking<Head>,
             }
         }
 
-        int lowIdx, highIdx;
+        int lowIdx = -1, highIdx = -1;
 
         if (sorted) {
-            lowIdx = Collections.binarySearch(map, new Tuple<>(low, null));
-            if (lowIdx < 0) lowIdx = -(lowIdx + 1);
-            highIdx = Collections.binarySearch(map, new Tuple<>(high, null));
-            if (highIdx < 0) highIdx = -(highIdx + 1);
+            lowIdx = binarySearch(low);
+            highIdx = binarySearch(high);
         } else if (index.isEmpty()) {
             int[] pieces = crackThree(low, high, 0, map.size() - 1, true);
-            lowIdx = pieces[0];
-            highIdx = pieces[1];
+            lowIdx = pieces[0] + 1;
+            highIdx = pieces[1] + 1;
         } else {
-            Map.Entry<Head, Integer> lowCeil = index.ceilingEntry(low);
-            Map.Entry<Head, Integer> lowFloor = index.floorEntry(low);
-            Map.Entry<Head, Integer> highCeil = index.ceilingEntry(high);
-            Map.Entry<Head, Integer> highFloor = index.floorEntry(high);
+            Map.Entry<Head, Partition> lowCeil = index.ceilingEntry(low);
+            Map.Entry<Head, Partition> lowFloor = index.floorEntry(low);
+            Map.Entry<Head, Partition> highCeil = index.ceilingEntry(high);
+            Map.Entry<Head, Partition> highFloor = index.floorEntry(high);
 
-            if (Objects.equals(lowCeil, highCeil) && Objects.equals(lowFloor, highFloor)) {
-                int pLow = lowFloor == null ? 0 : lowFloor.getValue();
-                int pHigh = lowCeil == null ? map.size() - 1 : lowCeil.getValue();
+            lowIdx = searchIfSorted(low, lowCeil, lowFloor);
+            highIdx = searchIfSorted(high, highCeil, highFloor);
+
+            if (lowIdx == -1 && highIdx == -1 && Objects.equals(lowCeil, highCeil) && Objects.equals(lowFloor, highFloor)) {
+                int pLow = lowFloor == null ? 0 : lowFloor.getValue().pHigh;
+                int pHigh = lowCeil == null ? this.map.size() - 1 : lowCeil.getValue().pHigh;
                 int[] pieces = crackThree(low, high, pLow, pHigh, true);
-                lowIdx = pieces[0];
-                highIdx = pieces[1];
+                lowIdx = pieces[0] + 1;
+                highIdx = pieces[1] + 1;
             } else {
-                lowIdx = findIndex(low, lowCeil, lowFloor);
-                highIdx = findIndex(high, highCeil, highFloor);
+                if (lowIdx == -1) lowIdx = findIndex(low, lowCeil, lowFloor) + 1;
+                if (highIdx == -1) highIdx = findIndex(high, highCeil, highFloor) + 1;
             }
         }
 
-        return (lowIdx < highIdx && lowIdx != -1 && highIdx != -1) ? map.subList(++lowIdx, ++highIdx) : Collections.emptyList();
+        return (lowIdx < highIdx && lowIdx != -1 && highIdx != -1) ? map.subList(lowIdx, highIdx) : Collections.emptyList();
     }
 
-    private int findIndex(Head key, Map.Entry<Head, Integer> ceil, Map.Entry<Head, Integer> floor) {
+    private int searchIfSorted(Head key, Map.Entry<Head, Partition> ceil, Map.Entry<Head, Partition> floor) {
+        if (ceil != null && ceil.getValue().sorted && key.compareTo(ceil.getKey()) <= 0) {
+            return binarySearch(ceil.getValue().pLow, ceil.getValue().pHigh, key);
+        } else if (floor != null && floor.getValue().sorted && floor.getKey().equals(key)) {
+            return binarySearch(floor.getValue().pLow, floor.getValue().pHigh, key);
+        }
+        return -1;
+    }
+
+    private int findIndex(Head key, Map.Entry<Head, Partition> ceil, Map.Entry<Head, Partition> floor) {
         if (ceil != null && floor != null) {
             int floorCompare = key.compareTo(floor.getKey());
             int ceilCompare = key.compareTo(ceil.getKey());
             if (floorCompare > 0 && ceilCompare < 0) { // in range
-                return crackTwo(key, floor.getValue(), ceil.getValue(), true);
+                return crackTwo(key, floor.getValue().pHigh, ceil.getValue().pHigh, true);
             } else if (floorCompare == 0 && ceilCompare == 0) { // exists
-                return floor.getValue();
+                return floor.getValue().pHigh;
             }
         } else if (ceil != null) {
-            return crackTwo(key, 0, ceil.getValue(), true);
+            return crackTwo(key, 0, ceil.getValue().pHigh, true);
         } else if (floor != null) {
-            return crackTwo(key, floor.getValue(), map.size() - 1, true);
+            return crackTwo(key, floor.getValue().pHigh, map.size() - 1, true);
         }
         return -1;
     }
@@ -115,8 +129,12 @@ class CrackerMap<Head extends Comparable<Head>, Tail> implements Cracking<Head>,
             tapePosition++;
         }
         // update index.
-        if (pieces[0] > 0) index.put(low, pieces[0]);
-        if (pieces[1] > 0) index.put(high, pieces[1]);
+        if (pieces[0] > 0) {
+            index.put(low, new Partition(pLow, pieces[0], sortInThreshold(pLow, pieces[0])));
+        }
+        if (pieces[1] > 0) {
+            index.put(high, new Partition(pieces[0] + 1, pieces[1], sortInThreshold(pieces[0] + 1, pieces[1])));
+        }
         return pieces;
     }
 
@@ -129,9 +147,25 @@ class CrackerMap<Head extends Comparable<Head>, Tail> implements Cracking<Head>,
             tapePosition++;
         }
         // update index.
-        if (pieceIdx > 0) index.put(key, pieceIdx);
+        if (pieceIdx > 0) {
+            index.put(key, new Partition(pLow, pieceIdx, sortInThreshold(pLow, pieceIdx)));
+        }
 
         return pieceIdx;
+    }
+
+    private boolean sortInThreshold(int pLow, int pHigh) {
+        if (ENABLE_SORTING && Math.abs(pHigh - pLow) <= SORTING_THRESHOLD) {
+            map.subList(pLow, pHigh + 1) // TODO: verify indices
+                    .sort(Tuple::compareTo);
+            numSortedPartitions++;
+//            if (index.size() == numSortedPartitions
+//                    && index.values().stream().allMatch(Partition::isSorted)) {
+//                sorted = true;
+//            }
+            return true;
+        }
+        return false;
     }
 
     public void exchange(int i, int j) {
@@ -145,5 +179,53 @@ class CrackerMap<Head extends Comparable<Head>, Tail> implements Cracking<Head>,
     @Override
     public Iterator<Tuple<Head, Tail>> iterator() {
         return map.iterator();
+    }
+
+    private int binarySearch(Head key) {
+        return binarySearch(0, map.size() - 1, key);
+    }
+
+    private int binarySearch(int fromIndex, int toIndex, Head key) {
+        int low = fromIndex;
+        int high = toIndex;
+
+        while (low <= high) {
+            int mid = (low + high) >>> 1;
+            int cmp = map.get(mid).head.compareTo(key);
+
+            if (cmp < 0)
+                low = mid + 1;
+            else if (cmp > 0)
+                high = mid - 1;
+            else
+                return mid;
+        }
+        return low;
+    }
+
+    private static class Partition {
+        int pLow; //<- update
+        int pHigh;
+        boolean sorted;
+
+        Partition(int pLow, int pHigh, boolean sorted) {
+            this.pLow = pLow;
+            this.pHigh = pHigh;
+            this.sorted = sorted;
+        }
+
+        boolean isSorted() {
+            return sorted;
+        }
+
+        @Override
+        public String toString() {
+            final StringBuilder sb = new StringBuilder("Partition{");
+            sb.append("pLow=").append(pLow);
+            sb.append(", pHigh=").append(pHigh);
+            sb.append(", sorted=").append(sorted);
+            sb.append('}');
+            return sb.toString();
+        }
     }
 }
