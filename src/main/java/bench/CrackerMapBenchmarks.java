@@ -98,26 +98,26 @@ public class CrackerMapBenchmarks {
 //        }
 //    }
 
-    static int[][] buildRanges(int size) {
+    static int[][] buildRanges(int N, int size) {
         int[][] ranges = new int[size][2];
         for (int[] range : ranges) {
-            randomRange(size, range);
+            randomRange(N, range);
         }
         return ranges;
     }
 
-    static int[][] buildRanges(int size, float selectivity) {
+    static int[][] buildRanges(int N, int size, float selectivity) {
         int[][] ranges = new int[size][2];
         for (int[] range : ranges) {
-            randomRange(size, selectivity, range);
+            randomRange(N, selectivity, range);
         }
         return ranges;
     }
 
-    static int[][] buildRanges(int size, int selectivityRows) {
+    static int[][] buildRanges(int N, int size, int selectivityRows) {
         int[][] ranges = new int[size][2];
         for (int[] range : ranges) {
-            randomRange(size, selectivityRows, range);
+            randomRange(N, selectivityRows, range);
         }
         return ranges;
     }

@@ -26,7 +26,7 @@ public class TupleReconstructionBench {
     private static final char SEPARATOR = ',';
 
     private static final String SELECTION_COL = "A0";
-    private static final int N_TUPLE_RECONSTRUCTIONS = 8;
+    private static final int N_TUPLE_RECONSTRUCTIONS = 9;
 
 
     public static void main(String[] args) throws IOException {
@@ -37,16 +37,16 @@ public class TupleReconstructionBench {
 
         long[][] responseTimes = benchmark(size, 1000, N_TUPLE_RECONSTRUCTIONS);
 
-        output(responseTimes, N_TUPLE_RECONSTRUCTIONS + "2.csv");
+        output(responseTimes, N_TUPLE_RECONSTRUCTIONS + ".csv");
     }
 
     static long[][] benchmark(int size, int querySequenceSize, int nProj) {
-        int[][] queryRanges = buildRanges(querySequenceSize, 0.2f);
+        int[][] queryRanges = buildRanges(size, querySequenceSize, 0.2f);
         long[] queryResponseTimes = new long[querySequenceSize];
         long[] sortedQueryResponseTimes = new long[querySequenceSize];
 
         String[] projectionCols = projectionCols(nProj);
-
+        // TODO: sleep, log range, random variance, millis, first jump, sort should flat-line.
         List<Integer> tail = Arrays.asList(new Integer[size]);
 
         ColumnDB db = new ColumnDB();

@@ -16,8 +16,8 @@ class CrackerMap<Head extends Comparable<Head>, Tail> implements Cracking<Head>,
     private static final Logger LOG = LoggerFactory.getLogger(CrackerMap.class);
     private static final Marker QUERY_MARKER = MarkerFactory.getMarker("QUERY");
 
-    private static final boolean ENABLE_SORTING = "true".equals(System.getProperty("hybrid.crack-sort.enabled", "true"));
-    private static final int SORTING_THRESHOLD = Integer.getInteger("hybrid.crack-sort.threshold", 100);
+    private final boolean enableSorting;
+    private final int sortingThreshold;
 
     private final CrackerTape<Head> tape;
     private int tapePosition = 0;
@@ -28,16 +28,18 @@ class CrackerMap<Head extends Comparable<Head>, Tail> implements Cracking<Head>,
     private int numSortedPartitions = 0;
 
     CrackerMap(List<Head> head, List<Tail> tail, CrackerTape<Head> tape) {
-        this(head, tail, tape, false);
+        this(head, tail, tape, false, false, 0);
     }
 
-    CrackerMap(List<Head> head, List<Tail> tail, CrackerTape<Head> tape, boolean isSorted) {
+    CrackerMap(List<Head> head, List<Tail> tail, CrackerTape<Head> tape, boolean isSorted, boolean enableSorting, int sortingThreshold) {
         assert head.size() == tail.size();
 
         this.tape = tape;
         this.map = new ArrayList<>(head.size());
         this.index = new TreeMap<>();
         this.sorted = isSorted;
+        this.enableSorting = enableSorting;
+        this.sortingThreshold = sortingThreshold;
 
         for (int i = 0; i < head.size(); i++) {
             map.add(new Tuple<>(head.get(i), tail.get(i)));
@@ -155,7 +157,7 @@ class CrackerMap<Head extends Comparable<Head>, Tail> implements Cracking<Head>,
     }
 
     private boolean sortInThreshold(int pLow, int pHigh) {
-        if (ENABLE_SORTING && Math.abs(pHigh - pLow) <= SORTING_THRESHOLD) {
+        if (enableSorting && Math.abs(pHigh - pLow) <= sortingThreshold) {
             map.subList(pLow, pHigh + 1) // TODO: verify indices
                     .sort(Tuple::compareTo);
             numSortedPartitions++;

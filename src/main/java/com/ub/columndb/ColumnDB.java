@@ -16,6 +16,17 @@ public class ColumnDB {
     private final Map<String, Boolean> sortedColumns = new HashMap<>();
     private final Map<String, Map<String, CrackerMap<? extends Comparable, ?>>> mapSets = new HashMap<>();
     private final Map<String, CrackerTape<? extends Comparable>> mapTapes = new HashMap<>();
+    private final int sortingThreshold;
+    private final boolean sortingEnabled;
+
+    public ColumnDB() {
+        this(false, 0);
+    }
+
+    public ColumnDB(boolean sortingEnabled, int sortingThreshold) {
+        this.sortingEnabled = sortingEnabled;
+        this.sortingThreshold = sortingThreshold;
+    }
 
     public <T extends Comparable<T>> void addColumn(String col, List<T> colData) {
         addColumn(col, colData, false);
@@ -38,9 +49,10 @@ public class ColumnDB {
                                             (List<H>) columns.get(selectionCol),
                                             (List<T>) columns.get(projectionCol),
                                             (CrackerTape<H>) mapTapes.computeIfAbsent(selectionCol, x -> new CrackerTape<H>()),
-                                            sortedColumns.get(selectionCol));
-                                    LOG.info("Building CrackerMap[{}, {}] took {} mu.s", selectionCol, projectionCol,
-                                            TimeUnit.MICROSECONDS.convert(System.nanoTime() - start, TimeUnit.NANOSECONDS));
+                                            sortedColumns.get(selectionCol),
+                                            sortingEnabled, sortingThreshold);
+                                    LOG.info("Building CrackerMap[{}, {}] took {} millis", selectionCol, projectionCol,
+                                            TimeUnit.MILLISECONDS.convert(System.nanoTime() - start, TimeUnit.NANOSECONDS));
                                     return map;
                                 });
         return crackerMap

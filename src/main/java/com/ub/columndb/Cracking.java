@@ -28,13 +28,13 @@ public interface Cracking<T extends Comparable<T>> {
                 x1++;
             else {
                 exchange(x1, x3);
-//                while (x3 > x1 && value(x3).compareTo(low) >= 0) {
-                if (value(x3).compareTo(high) >= 0) {
-                    exchange(x2, x3);
-                    x2--;
+                while (x3 > x1 && value(x3).compareTo(low) >= 0) {
+                    if (value(x3).compareTo(high) >= 0) {
+                        exchange(x2, x3);
+                        x2--;
+                    }
+                    x3--;
                 }
-                x3--;
-//                }
             }
         }
 
