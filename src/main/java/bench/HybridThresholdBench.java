@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -15,9 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static bench.CrackerMapBenchmarks.buildRanges;
-import static bench.CrackerMapBenchmarks.time;
-import static bench.RangeUtils.data;
+import static bench.RangeUtils.*;
 
 public class HybridThresholdBench {
     private static final Logger LOG = LoggerFactory.getLogger(HybridThresholdBench.class);
@@ -26,24 +25,28 @@ public class HybridThresholdBench {
 
     private static final String SELECTION_COL = "A0";
     private static final String[] PROJECTION_COLS = new String[]{"A1", "A2"};
-    private static final int SORTING_THRESHOLD = 10000;
-    private static final int SELECTIVITY = 100;
+    private static final int SELECTIVITY = 100000;
+
+    private static final int SORTING_THRESHOLD = 1000_000;
+
 
     public static void main(String[] args) throws IOException, InterruptedException {
         int warmUpSize = 10000;
-        int warmQuerySequenceSize = 10000;
+        int warmQuerySequenceSize = 1000;
         benchmark(warmUpSize, warmQuerySequenceSize, buildRanges(warmUpSize, warmQuerySequenceSize, 100));
 
+        System.gc();
+        Thread.sleep(5000);
+        LOG.info("Starting");
+
         int size = 1_000_000_0;
-        int querySequenceSize = 2000;
+        int querySequenceSize = 30000;
         long[][] responseTimes = benchmark(size, querySequenceSize, buildRanges(size, querySequenceSize, SELECTIVITY));
 
         output(responseTimes, "T" + SORTING_THRESHOLD + ".csv");
     }
 
     static long[][] benchmark(int size, int querySequenceSize, int[][] queryRanges) throws InterruptedException {
-//        LOG.info("Q: {}", Arrays.deepToString(queryRanges));
-
         List<Integer> head = data(size);
         List<Integer> tail = Arrays.asList(new Integer[size]);
 
@@ -75,16 +78,18 @@ public class HybridThresholdBench {
     }
 
     private static void output(long[][] responseTimes, String file) throws IOException {
-        int hybridTemp = 0;
+        BigInteger acc = BigInteger.ZERO;
+
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(file), StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
             writer.append("QuerySequence").append(SEPARATOR).append("ResponseTime").append(SEPARATOR).append("Type");
             writer.newLine();
             long[] cracked = responseTimes[0];
             for (int j = 0, i = 1; j < cracked.length; j++, i++) {
-                hybridTemp += cracked[j];
+                acc = acc.add(BigInteger.valueOf(cracked[j]));
+
                 writer.append(String.valueOf(i));
                 writer.append(SEPARATOR);
-                writer.append(String.valueOf(hybridTemp));
+                writer.append(acc.toString());
                 writer.append(SEPARATOR);
                 writer.append(Integer.toString(SORTING_THRESHOLD));
                 writer.newLine();

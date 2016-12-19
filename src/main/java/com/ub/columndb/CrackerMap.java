@@ -158,7 +158,7 @@ class CrackerMap<Head extends Comparable<Head>, Tail> implements Cracking<Head>,
 
     private boolean sortInThreshold(int pLow, int pHigh) {
         if (enableSorting && Math.abs(pHigh - pLow) <= sortingThreshold) {
-            map.subList(pLow, pHigh + 1) // TODO: verify indices
+            map.subList(pLow, pHigh + 1)
                     .sort(Tuple::compareTo);
             numSortedPartitions++;
 //            if (index.size() == numSortedPartitions

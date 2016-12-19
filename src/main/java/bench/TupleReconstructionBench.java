@@ -16,9 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static bench.CrackerMapBenchmarks.buildRanges;
-import static bench.CrackerMapBenchmarks.time;
-import static bench.RangeUtils.data;
+import static bench.RangeUtils.*;
 
 public class TupleReconstructionBench {
     private static final Logger LOG = LoggerFactory.getLogger(TupleReconstructionBench.class);
@@ -26,12 +24,17 @@ public class TupleReconstructionBench {
     private static final char SEPARATOR = ',';
 
     private static final String SELECTION_COL = "A0";
-    private static final int N_TUPLE_RECONSTRUCTIONS = 9;
+    private static final int N_TUPLE_RECONSTRUCTIONS = 2;
 
 
-    public static void main(String[] args) throws IOException {
-        int warmUpSize = 1000;
-        benchmark(warmUpSize, warmUpSize, 1);
+    // TODO: sleep, log range, random variance, millis, first jump, sort should flat-line.
+    public static void main(String[] args) throws IOException, InterruptedException {
+        int warmUpSize = 10000;
+        benchmark(warmUpSize, 1000, 1);
+
+        System.gc();
+        Thread.sleep(5000);
+        LOG.info("Starting");
 
         int size = 1_000_000;
 
@@ -40,13 +43,11 @@ public class TupleReconstructionBench {
         output(responseTimes, N_TUPLE_RECONSTRUCTIONS + ".csv");
     }
 
-    static long[][] benchmark(int size, int querySequenceSize, int nProj) {
-        int[][] queryRanges = buildRanges(size, querySequenceSize, 0.2f);
+    static long[][] benchmark(int size, int querySequenceSize, int nProj) throws InterruptedException {
+        int[][] queryRanges = buildRanges(size, querySequenceSize, 1000);
         long[] queryResponseTimes = new long[querySequenceSize];
-        long[] sortedQueryResponseTimes = new long[querySequenceSize];
 
         String[] projectionCols = projectionCols(nProj);
-        // TODO: sleep, log range, random variance, millis, first jump, sort should flat-line.
         List<Integer> tail = Arrays.asList(new Integer[size]);
 
         ColumnDB db = new ColumnDB();
@@ -57,6 +58,9 @@ public class TupleReconstructionBench {
         }
         query(db, queryRanges, projectionCols, queryResponseTimes);
 
+        System.gc();
+        Thread.sleep(5000);
+        LOG.info("Sorting");
 
         ColumnDB sortedDB = new ColumnDB();
         List<Integer> sortedHead = new ArrayList<>(head);
@@ -66,6 +70,7 @@ public class TupleReconstructionBench {
         for (String projectionCol : projectionCols) {
             sortedDB.addColumn(projectionCol, tail);
         }
+        long[] sortedQueryResponseTimes = new long[querySequenceSize];
         query(sortedDB, queryRanges, projectionCols, sortedQueryResponseTimes);
         sortedQueryResponseTimes[0] += sortingTime; // add time for pre-sorting
 
@@ -91,8 +96,8 @@ public class TupleReconstructionBench {
     }
 
     private static void output(long[][] responseTimes, String file) throws IOException {
-        try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(file), StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
-            writer.append("QuerySequence").append(SEPARATOR).append("ResponseTime").append(SEPARATOR).append("Type");
+        try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(file), StandardCharsets.UTF_8, StandardOpenOption.APPEND, StandardOpenOption.CREATE)) {
+//            writer.append("QuerySequence").append(SEPARATOR).append("ResponseTime").append(SEPARATOR).append("Type");
             writer.newLine();
             long[] cracked = responseTimes[0];
             long[] sorted = responseTimes[1];

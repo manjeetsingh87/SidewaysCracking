@@ -4,10 +4,13 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 
 public class RangeUtils {
     private static final Random RANDOM;
+    private static final TimeUnit TIME_UNIT = TimeUnit.NANOSECONDS;
 
     static {
         RANDOM = new Random(Long.MAX_VALUE);
@@ -85,5 +88,42 @@ public class RangeUtils {
         List<Integer> list = Arrays.asList(col);
         Collections.shuffle(list, RANDOM);
         return list;
+    }
+
+    static int[][] buildRanges(int N, int size) {
+        int[][] ranges = new int[size][2];
+        for (int[] range : ranges) {
+            randomRange(N, range);
+        }
+        return ranges;
+    }
+
+    static int[][] buildRanges(int N, int size, float selectivity) {
+        int[][] ranges = new int[size][2];
+        for (int[] range : ranges) {
+            randomRange(N, selectivity, range);
+        }
+        return ranges;
+    }
+
+    static int[][] buildRanges(int N, int size, int selectivityRows) {
+        int[][] ranges = new int[size][2];
+        for (int[] range : ranges) {
+            randomRange(N, selectivityRows, range);
+        }
+        return ranges;
+    }
+
+    static long time(Runnable runnable) {
+        long start = System.nanoTime();
+        runnable.run();
+        return TIME_UNIT.convert(System.nanoTime() - start, TimeUnit.NANOSECONDS);
+    }
+
+    static <T> T time(Supplier<T> supplier, long[] dest, int destIndex) {
+        long start = System.nanoTime();
+        T t = supplier.get();
+        dest[destIndex] = TIME_UNIT.convert(System.nanoTime() - start, TimeUnit.NANOSECONDS);
+        return t;
     }
 }
